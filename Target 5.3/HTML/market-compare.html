@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Batterij-marktvergelijker</title>
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js v4 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- PapaParse – stabiele versie 5.3.2 -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" id="appRoot">
+
+  <!-- Back link -->
+  <div class="mb-6">
+    <a href="index.html" class="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">← Terug naar hoofdtool</a>
+  </div>
+
+  <!-- Sticky header -->
+  <div class="sticky top-0 z-10 bg-gray-50/80 backdrop-blur supports-[backdrop-filter]:bg-gray-50/60 border-b mb-6 dark:bg-gray-900/70">
+    <div class="max-w-screen-2xl mx-auto px-0 py-3 flex items-center justify-between gap-4">
+      <h1 class="text-2xl font-bold">Batterij-marktvergelijker (MWh)</h1>
+      <div class="flex items-center gap-2">
+        <label class="hidden md:block text-sm text-gray-600">Upload CSV</label>
+        <input id="csvFile" type="file" accept=".csv"
+               class="file:px-3 file:py-2 file:bg-blue-600 file:text-white file:rounded-md" />
+        <button id="themeToggle" class="ml-2 px-3 py-2 rounded border text-sm">🌙</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Land filter -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card sticky top-16 z-10">
+    <label class="block mb-3">
+      <span class="block mb-1 text-sm font-medium">Selecteer land(eren) voor marktanalyse</span>
+      <select id="marketCountrySelect" class="px-3 py-2 border rounded-md w-full md:w-1/2" multiple size="5">
+        <option value="__all">Alle landen</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">Tip: Houd Ctrl ingedrukt voor meerdere selectie</p>
+    </label>
+  </div>
+
+  <!-- SKU overzicht -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">SKU-overzicht per segment</h3>
+      <button id="toggleSkuOverview" class="text-xs text-blue-600 hover:text-blue-800">Toon/verberg</button>
+    </div>
+    <div id="skuOverview" class="hidden">
+      <p class="text-sm text-gray-600 mb-3">Overzicht van SKU's die gebruikt worden voor MWh berekening</p>
+      <div id="skuOverviewContent" class="grid md:grid-cols-3 gap-4">
+        <!-- Dynamisch gevuld -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Input sectie: Marktdata -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">Marktdata invoer</h3>
+      <button id="toggleMarketInput" class="text-xs text-blue-600 hover:text-blue-800">Toon/verberg</button>
+    </div>
+    <div id="marketDataInput" class="hidden">
+      <p class="text-sm text-gray-600 mb-3">Voer marktdata in (MWh) per jaar en per land</p>
+      <div id="marketDataControls" class="space-y-3">
+        <!-- Dynamisch gevuld -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Input sectie: Google Trends -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">Google Trends</h3>
+      <button id="toggleTrendsInput" class="text-xs text-blue-600 hover:text-blue-800">Toon/verberg</button>
+    </div>
+    <div id="trendsDataInput" class="hidden">
+      <p class="text-sm text-gray-600 mb-3">Voer Google Trends index in (0-100) per jaar en per land</p>
+      <div id="trendsDataControls" class="space-y-3">
+        <!-- Dynamisch gevuld -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics Cards -->
+  <div id="metricsCards" class="grid md:grid-cols-4 gap-4 mb-6">
+    <!-- Dynamisch gevuld -->
+  </div>
+
+  <!-- Charts -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <h3 class="font-semibold mb-3">Markt vs 4blue (MWh/jaar)</h3>
+    <canvas id="volumeChart" height="100"></canvas>
+  </div>
+
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <h3 class="font-semibold mb-3">Marktaandeel (%) per jaar</h3>
+    <canvas id="shareChart" height="100"></canvas>
+  </div>
+
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <h3 class="font-semibold mb-3">Trends vs Markt (dual-axis)</h3>
+    <canvas id="trendsChart" height="100"></canvas>
+  </div>
+
+  <!-- SKU verkoop analyse -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">SKU verkoop analyse</h3>
+      <div class="flex items-center gap-3">
+        <label class="text-sm">
+          <span class="block mb-1">Periode</span>
+          <select id="skuPeriodSelect" class="px-3 py-2 border rounded-md">
+            <option value="all">Alle jaren</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <canvas id="skuSalesChart" height="150"></canvas>
+  </div>
+
+  <!-- SKU tellingen debug/info -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold">SKU tellingen verificatie</h3>
+      <button id="toggleSkuCounts" class="text-xs text-blue-600 hover:text-blue-800">Toon/verberg</button>
+    </div>
+    <div id="skuCountsSection" class="hidden">
+      <p class="text-sm text-gray-600 mb-3">Gedetailleerde tellingen per SKU (helpt bij verificatie)</p>
+      <div class="mb-3">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="includeUnknownSkus" />
+          <span class="text-sm">Toon ook onbekende SKU's (niet in mapping)</span>
+        </label>
+      </div>
+      <div class="overflow-x-auto">
+        <table id="skuCountsTable" class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="bg-gray-100 border-b">
+              <th class="text-left p-2">SKU</th>
+              <th class="text-right p-2">Telling</th>
+              <th class="text-right p-2">Capaciteit (kWh)</th>
+              <th class="text-right p-2">Totaal MWh</th>
+              <th class="text-left p-2">Segment</th>
+              <th class="text-left p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody id="skuCountsBody">
+            <!-- Dynamisch gevuld -->
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 text-xs text-gray-500">
+        <p><strong>Info:</strong></p>
+        <ul class="list-disc list-inside mt-1">
+          <li>Telling = aantal verkochte eenheden in geselecteerde periode/landen</li>
+          <li>Combo SKU's worden apart getoond + als complete sets</li>
+          <li>Onbekende SKU's worden niet meegerekend in MWh berekening</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export button -->
+  <div class="mb-6">
+    <button id="exportBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+      Exporteer als CSV
+    </button>
+  </div>
+
+  <!-- Warnings/validations -->
+  <div id="warningsBox" class="mb-6"></div>
+
+  <script src="market-compare.js"></script>
+  <script>
+    // Dark mode toggle with persistence
+    (function() {
+      const root = document.documentElement;
+      const LS_KEY = 'theme:dark';
+      function applyTheme(isDark) {
+        root.classList.toggle('dark', !!isDark);
+        const btn = document.getElementById('themeToggle');
+        if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+      }
+      const saved = localStorage.getItem(LS_KEY);
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(saved === '1' || (saved === null && prefersDark));
+      window.addEventListener('click', function(e){
+        const t = e.target;
+        if (t && t.id === 'themeToggle') {
+          const isDark = !document.documentElement.classList.contains('dark');
+          applyTheme(isDark);
+          localStorage.setItem(LS_KEY, isDark ? '1' : '0');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
+

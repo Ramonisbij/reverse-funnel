@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Merktarget-tool</title>
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js v4 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<!-- PapaParse – stabiele versie 5.3.2 -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" id="appRoot">
+
+  <!-- Sticky header with primary actions -->
+  <div class="sticky top-0 z-10 bg-gray-50/80 backdrop-blur supports-[backdrop-filter]:bg-gray-50/60 border-b mb-6 dark:bg-gray-900/70">
+    <div class="max-w-screen-2xl mx-auto px-0 py-3 flex items-center justify-between gap-4">
+      <h1 class="text-2xl font-bold">Merktarget-tool</h1>
+      <div class="flex items-center gap-2">
+        <label class="hidden md:block text-sm text-gray-600">Upload CSV</label>
+        <input id="csvFile" type="file" accept=".csv"
+               class="file:px-3 file:py-2 file:bg-blue-600 file:text-white file:rounded-md" />
+        <button id="saveConfigBtn" class="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">💾 Opslaan</button>
+        <button id="loadConfigBtn" class="px-3 py-2 bg-stone-600 text-white rounded hover:bg-stone-700">📂 Laden</button>
+        <input id="loadConfigInput" type="file" accept="application/json" class="hidden">
+        <button id="themeToggle" class="ml-2 px-3 py-2 rounded border text-sm">🌙</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters: leverancier, artikelgroep, land, klant, C&I/Residentieel -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card sticky top-16 z-10">
+    <div class="grid md:grid-cols-5 gap-4 items-end">
+      <label class="block">
+        <span class="block mb-1 text-sm font-medium">Selecteer leverancier</span>
+        <select id="supplierSelect" class="px-3 py-2 border rounded-md w-full">
+  <!-- Opties worden dynamisch gevuld -->
+  <option value="__all">Alle leveranciers</option>
+</select>
+      </label>
+      <label class="block">
+        <span class="block mb-1 text-sm font-medium">Selecteer artikelgroep</span>
+        <select id="artikelgroepSelect" class="px-3 py-2 border rounded-md w-full">
+  <!-- Opties worden dynamisch gevuld -->
+  <option value="__all">Alle artikelgroepen</option>
+</select>
+      </label>
+      <label class="block">
+        <span class="block mb-1 text-sm font-medium">Selecteer land</span>
+        <select id="countrySelect" class="px-3 py-2 border rounded-md w-full">
+  <option value="__all">Alle landen</option>
+  <!-- Opties worden dynamisch gevuld -->
+ </select>
+      </label>
+      <label class="block">
+        <span class="block mb-1 text-sm font-medium">Selecteer specifieke klant</span>
+        <select id="customerSelect" class="px-3 py-2 border rounded-md w-full">
+  <option value="__all">Alle klanten</option>
+  <!-- Opties worden dynamisch gevuld -->
+</select>
+      </label>
+      <label class="block">
+        <span class="block mb-1 text-sm font-medium">Segment</span>
+        <select id="segmentSelect" class="px-3 py-2 border rounded-md w-full">
+          <option value="__all">Alle segmenten</option>
+          <option value="residentieel">Residentieel</option>
+          <option value="ci">C&I</option>
+        </select>
+      </label>
+    </div>
+    <div class="mt-3 flex justify-end">
+      <button id="addSupplierBtn" class="px-3 py-2 bg-blue-600 text-white rounded">Nieuw merk</button>
+    </div>
+  </div>
+
+<!-- Individuele klant forecast panel -->
+<div id="individualCustomerPanel" class="hidden mb-6 p-4 border rounded-md bg-blue-50">
+  <h3 class="font-bold mb-3 text-blue-800">Forecast instellingen voor deze klant</h3>
+  <div id="individualCustomerControls">
+    <!-- wordt dynamisch gevuld -->
+  </div>
+</div>
+
+<!-- Datumfilter verplaatst naar omzetkaart -->
+
+<!-- Nieuw merk knop verplaatst naar filterkaart -->
+
+<!-- Inline formulier (verborgen) -->
+<div id="newSupplierForm"
+     class="hidden mb-6 p-4 border rounded bg-gray-50">
+  <div class="grid md:grid-cols-2 gap-4">
+    <label class="block">Naam merk / leverancier
+      <input id="newSupName" type="text"
+             class="mt-1 px-2 py-1 border rounded w-full">
+    </label>
+
+    <label class="block">Startmaand
+      <input id="newSupStart" type="month"
+             class="mt-1 px-2 py-1 border rounded">
+    </label>
+
+    <label class="block">Nieuwe klanten / maand
+      <input id="newSupCustomers" type="number" min="1"
+             class="mt-1 px-2 py-1 border rounded w-full">
+    </label>
+
+    <label class="block">Gem. omzet / klant (€)
+      <input id="newSupAvgRev" type="number" min="0" step="0.01"
+             class="mt-1 px-2 py-1 border rounded w-full">
+    </label>
+  </div>
+
+  <div class="mt-4 space-x-2">
+    <button id="saveNewSupplierBtn"
+            class="px-3 py-2 bg-green-600 text-white rounded">
+      Opslaan
+    </button>
+    <button id="cancelNewSupplierBtn"
+            class="px-3 py-2 bg-gray-400 text-white rounded">
+      Annuleren
+    </button>
+  </div>
+</div>
+
+<!-- Opslaan/Laden verplaatst naar sticky header -->
+
+
+
+  <!-- 2️⃣ Event-klant selectie -->
+  <div class="mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <label class="block mb-2 font-medium">Zoek &amp; vink event-klanten aan</label>
+    <input type="text" id="customerSearch"
+           placeholder="Typ klantnaam..."
+           class="w-full md:w-1/2 px-3 py-2 border rounded-md mb-3" />
+    <div id="customerList"
+         class="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1"></div>
+  </div>
+
+  <!-- 2b️⃣ Instellingen per event-klant -->
+<div id="eventControlPanel"
+class="grid md:grid-cols-3 gap-4 mb-6">
+<!-- Wordt via JS gevuld -->
+</div>
+
+  <!-- 3️⃣ Staafdiagram omzet -->
+  <div class="mb-8 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+      <h3 class="font-semibold">Omzet</h3>
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="block text-sm">
+          <span class="block mb-1">Vanaf</span>
+          <input type="month" id="dateFilterFrom" class="px-3 py-2 border rounded-md">
+        </label>
+        <label class="block text-sm">
+          <span class="block mb-1">Tot</span>
+          <input type="month" id="dateFilterTo" class="px-3 py-2 border rounded-md">
+        </label>
+        <label class="block text-sm">
+          <span class="block mb-1">Weergave</span>
+          <select id="revenueGrouping" class="px-3 py-2 border rounded-md">
+            <option value="month">Per maand</option>
+            <option value="quarter">Per kwartaal</option>
+            <option value="year">Per jaar</option>
+          </select>
+        </label>
+        <div class="flex items-center gap-2">
+          <button id="applyDateFilter" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Toepassen</button>
+          <button id="clearDateFilter" class="px-3 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500">Wissen</button>
+        </div>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="toggleTrendline" checked>
+          <span>Trendlijn tonen</span>
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="toggleMarketGrowth">
+          <span>Marktgroei tonen</span>
+        </label>
+        <label class="block text-sm">
+          <span class="block mb-1">Marktgroei (%/maand)</span>
+          <input type="number" id="marketGrowthRate" min="0" max="100" step="0.1" value="2" class="px-3 py-2 border rounded-md w-24">
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="toggleStackedBars" checked>
+          <span>Staafdiagram tonen</span>
+        </label>
+        <button id="exportExcelBtn" class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+          📤 Export naar Excel
+        </button>
+      </div>
+    </div>
+    <canvas id="revenueChart" height="120"></canvas>
+    <p id="dateFilterInfo" class="mt-2 text-sm text-gray-600">Laat leeg om alle datums te tonen</p>
+  </div>
+
+  <!-- 2c️⃣ Uitgangspunt voor forecast -->
+<div id="baselinePanel" class="mb-6 space-y-2 bg-white p-4 rounded-md shadow-sm card">
+  <label class="block font-medium">Uitgangspunt forecast</label>
+
+  <label class="flex items-center gap-2">
+    <input type="radio" name="baselineMode" value="single" checked>
+    Eén maand
+    <input type="month" id="baselineMonth"
+           class="ml-2 px-2 py-1 border rounded">
+  </label>
+
+  <label class="flex items-center gap-2">
+    <input type="radio" name="baselineMode" value="range">
+    Gemiddelde van periode
+    <input type="month" id="baselineFrom"
+           class="px-2 py-1 border rounded">
+    <span>–</span>
+    <input type="month" id="baselineTo"
+           class="px-2 py-1 border rounded">
+  </label>
+
+  <!-- Forecast methode -->
+  <div class="mt-3">
+    <label class="block font-medium mb-1">Forecast methode</label>
+    <label class="inline-flex items-center mr-4">
+      <input type="radio" name="forecastMode" value="kpi" checked>
+      <span class="ml-2">KPI-sliders</span>
+    </label>
+    <label class="inline-flex items-center mr-4">
+      <input type="radio" name="forecastMode" value="trend">
+      <span class="ml-2">Trendlijn (orderhistorie)</span>
+    </label>
+    <label class="inline-flex items-center">
+      <input type="radio" name="forecastMode" value="exp">
+      <span class="ml-2">Exponentiële groei</span>
+    </label>
+  </div>
+
+  <!-- Extra jaren toggle -->
+  <label class="flex items-center gap-2 mt-2" title="Schakel in om targets en forecast door te trekken t/m over 2 extra jaren (bijv. 2027 en 2028)">
+    <input type="checkbox" id="showExtraYears">
+    <span>Forecast en targets uitbreiden met extra jaren (t/m +3 jaar)</span>
+  </label>
+
+  <!-- Seizoensindex -->
+  <label class="flex items-center gap-2 mt-2">
+    <input type="checkbox" id="useSeasonality">
+    <span>Gebruik seizoensindex (op basis van historie)</span>
+  </label>
+  <!-- Seizoensindex editor -->
+  <div id="seasonalityBox" class="mt-2 hidden">
+    <button id="toggleSeasonalityEditor"
+            class="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300">
+      Maandfactoren bewerken
+    </button>
+    <div id="seasonalityEditor" class="mt-2 p-3 border rounded bg-white hidden">
+      <div class="text-sm text-gray-600 mb-2">
+        Pas per maand de factor aan. 100% = gemiddelde maand. Leeg laten = automatisch op basis van historie.
+      </div>
+      <div id="seasonalityInputs" class="grid md:grid-cols-3 gap-3"></div>
+      
+      <!-- Update grafiek button -->
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button id="updateSeasonalityChartBtn"
+                class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+          📊 Update grafiek
+        </button>
+        <button id="applyStorageSeasonalityPreset"
+                class="px-3 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600"
+                title="Stel maandfactoren automatisch in op basis van het opslagmarkt-profiel">
+          ⚡ Kies opslagmarkt
+        </button>
+      </div>
+      
+      <div class="mt-2 text-xs text-gray-500">
+        Tip: met seizoensindex ingeschakeld worden de sliders 'Dip december' en 'Dip bouwvak' uitgeschakeld.
+      </div>
+    </div>
+  </div>
+
+  <!-- Klantgroei methode -->
+  <div class="mt-3">
+    <label class="block font-medium mb-1">Klantgroei methode</label>
+    <label class="inline-flex items-center mr-4">
+      <input type="radio" name="customerMode" value="percent" checked>
+      <span class="ml-2">% churn en % new business</span>
+    </label>
+    <label class="inline-flex items-center">
+      <input type="radio" name="customerMode" value="absolute">
+      <span class="ml-2">Verwachte nieuwe klanten / maand</span>
+    </label>
+    <label class="inline-flex items-center mt-2 md:mt-0 ml-0 md:ml-4">
+      <input type="radio" name="customerMode" value="manual">
+      <span class="ml-2">Handmatig verwacht aantal klanten per maand</span>
+    </label>
+
+    <!-- Absolute mode extra velden -->
+    <div class="grid md:grid-cols-2 gap-4 mt-3 hidden" id="absoluteCustomerConfig">
+      <label class="block">
+        Nieuwe klanten / maand
+        <input type="number" id="newCustomersPerMonth" min="0" step="1"
+               class="mt-1 px-2 py-1 border rounded w-full" placeholder="bijv. 10">
+      </label>
+      <label class="block">
+        Gem. omzet / klant (€)
+        <input type="number" id="avgRevenuePerCustomerAbs" min="0" step="0.01"
+               class="mt-1 px-2 py-1 border rounded w-full" placeholder="bijv. 500.00">
+      </label>
+    </div>
+    <!-- Manual mode configuratie -->
+    <div class="mt-3 hidden" id="manualCustomerConfig">
+      <div class="grid md:grid-cols-2 gap-4 mb-3">
+        <label class="block">
+          Gem. omzet / klant (€)
+          <input type="number" id="avgRevenuePerCustomerManual" min="0" step="0.01"
+                 class="mt-1 px-2 py-1 border rounded w-full" placeholder="bijv. 500.00">
+        </label>
+      </div>
+      <p class="text-sm text-gray-600 mb-3">
+        Vul per maand in hoeveel normale klanten je verwacht. Laat een veld leeg om de laatst ingevoerde waarde aan te houden.
+      </p>
+      <div id="manualCustomerInputs" class="grid md:grid-cols-3 gap-3 mt-3"></div>
+      <div class="mt-3">
+        <button id="manualCustomerClearBtn" type="button" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-sm rounded">
+          Plan wissen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p id="baselineWarning"
+     class="hidden text-sm text-red-600">
+     ⚠️ Geen omzet gevonden in de gekozen periode.
+  </p>
+</div>
+
+  
+
+  <!-- KPI-sliders -->
+<div id="kpiPanel" class="grid md:grid-cols-5 gap-4 mb-6 bg-white p-4 rounded-md shadow-sm">
+  <!-- wordt dynamisch gevuld -->
+</div>
+
+<!-- Metrics – churn & new business -->
+<div id="metricBox" class="grid md:grid-cols-2 gap-4 mb-6 bg-white p-4 rounded-md shadow-sm">
+  <!-- wordt door JS gevuld -->
+</div>
+  <!-- 4️⃣ Info-blok jaartarget -->
+  <div id="yearTarget" class="mt-4 text-lg font-semibold"></div>
+  <div id="avgRevenuePerNormalCustomer" class="mt-1 text-sm text-gray-700"></div>
+  <!-- Grafiek: aantal normale klanten per maand -->
+<canvas id="customerCountChart" class="mt-8" height="90"></canvas>
+
+  <!-- Eerste Aankoop Analyse -->
+  <div id="firstPurchasePanel" class="mt-8 mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div>
+        <h3 class="font-semibold">Eerste Aankoop Analyse</h3>
+        <p class="text-xs text-gray-500">
+          Analyseer welke klanten zijn begonnen met een specifiek merk/product en of ze daarna ook andere producten zijn gaan kopen.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm">
+          Filter op eerste aankoop merk:
+          <select id="firstPurchaseSupplierFilter" class="ml-2 px-3 py-2 border rounded-md text-sm">
+            <option value="__all">Alle merken</option>
+          </select>
+        </label>
+        <input type="text" id="firstPurchaseSearch" 
+               placeholder="Zoek klant..." 
+               class="px-3 py-2 border rounded-md text-sm" />
+      </div>
+    </div>
+    <div id="firstPurchaseContent">
+      <div id="firstPurchaseSummary" class="mb-4 text-sm text-gray-600"></div>
+      <div class="overflow-x-auto">
+        <table id="firstPurchaseTable" class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="bg-gray-100 border-b">
+              <th class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200" data-sort="customer">Klant <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200" data-sort="firstPurchase">Eerste aankoop <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200" data-sort="otherPurchases">Andere aankopen <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-right cursor-pointer hover:bg-gray-200" data-sort="timeToNext">Tijd tot volgende <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-right cursor-pointer hover:bg-gray-200" data-sort="totalRevenue">Totale omzet <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-center">Acties</th>
+            </tr>
+          </thead>
+          <tbody id="firstPurchaseTableBody">
+            <tr>
+              <td colspan="6" class="px-3 py-4 text-center text-gray-500">Geen data beschikbaar. Upload eerst een CSV.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Klantanalyse: Deep Dive -->
+  <div id="customerAnalysisPanel" class="mt-8 mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div>
+        <h3 class="font-semibold">Klantanalyse: Deep Dive</h3>
+        <p class="text-xs text-gray-500">
+          Overzicht van alle klanten die voldoen aan de huidige filters. Analyse van wat deze klanten nog meer kopen.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="text" id="customerAnalysisSearch" 
+               placeholder="Zoek klant..." 
+               class="px-3 py-2 border rounded-md text-sm" />
+      </div>
+    </div>
+    <div id="customerAnalysisContent">
+      <div id="customerAnalysisSummary" class="mb-4 text-sm text-gray-600"></div>
+      <div class="overflow-x-auto">
+        <table id="customerAnalysisTable" class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="bg-gray-100 border-b">
+              <th class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200" data-sort="customer">Klant <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-right cursor-pointer hover:bg-gray-200" data-sort="filteredRevenue">Omzet gefilterd <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-right cursor-pointer hover:bg-gray-200" data-sort="totalRevenue">Totale omzet <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-right cursor-pointer hover:bg-gray-200" data-sort="avgMonthlyRevenue">Gem. omzet/maand <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200" data-sort="suppliers">Leveranciers/Merken <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-right cursor-pointer hover:bg-gray-200" data-sort="otherProducts">Andere producten <span class="sort-indicator">↕</span></th>
+              <th class="px-3 py-2 text-center">Acties</th>
+            </tr>
+          </thead>
+          <tbody id="customerAnalysisTableBody">
+            <tr>
+              <td colspan="7" class="px-3 py-4 text-center text-gray-500">Geen data beschikbaar. Upload eerst een CSV.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Klant Deep Dive -->
+  <div id="customerDeepDiveModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-6xl max-h-[95vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold" id="deepDiveCustomerName">Klantdetails</h2>
+        <button id="closeDeepDiveModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-4">
+        <div id="deepDiveSummary" class="grid md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded"></div>
+        
+        <!-- Leveranciers/Merken overzicht -->
+        <div>
+          <h3 class="font-semibold mb-2">Leveranciers/Merken bij 4BLUE</h3>
+          <p class="text-xs text-gray-500 mb-2">Overzicht van alle leveranciers waar deze klant bij 4BLUE van koopt</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="bg-gray-100 border-b">
+                  <th class="px-3 py-2 text-left">Leverancier/Merk</th>
+                  <th class="px-3 py-2 text-right">Aantal orders</th>
+                  <th class="px-3 py-2 text-right">Totale omzet</th>
+                  <th class="px-3 py-2 text-right">Gem. omzet/order</th>
+                  <th class="px-3 py-2 text-right">% van totaal</th>
+                </tr>
+              </thead>
+              <tbody id="deepDiveSuppliersTable">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Maand-op-maand overzicht -->
+        <div>
+          <h3 class="font-semibold mb-2">Omzet per maand</h3>
+          <p class="text-xs text-gray-500 mb-2">Maandelijks overzicht van totale omzet</p>
+          <canvas id="deepDiveMonthlyChart" height="200"></canvas>
+        </div>
+        
+        <!-- Maand-op-maand tabel -->
+        <div>
+          <h3 class="font-semibold mb-2">Maand-op-maand detail</h3>
+          <div class="overflow-x-auto max-h-64 overflow-y-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead class="sticky top-0 bg-gray-100">
+                <tr class="border-b">
+                  <th class="px-3 py-2 text-left">Maand</th>
+                  <th class="px-3 py-2 text-right">Totale omzet</th>
+                  <th class="px-3 py-2 text-right">Aantal orders</th>
+                  <th class="px-3 py-2 text-right">Gem. orderwaarde</th>
+                  <th class="px-3 py-2 text-right">Aantal leveranciers</th>
+                </tr>
+              </thead>
+              <tbody id="deepDiveMonthlyTable">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Producten per leverancier -->
+        <div>
+          <h3 class="font-semibold mb-2">Producten per leverancier</h3>
+          <p class="text-xs text-gray-500 mb-2">Gedetailleerd overzicht van producten per leverancier</p>
+          <div id="deepDiveProductsBySupplier" class="space-y-4">
+            <!-- Wordt dynamisch gevuld -->
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold mb-2">Alle producten gekocht</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="bg-gray-100 border-b">
+                  <th class="px-3 py-2 text-left">Product</th>
+                  <th class="px-3 py-2 text-left">Leverancier</th>
+                  <th class="px-3 py-2 text-right">Aantal orders</th>
+                  <th class="px-3 py-2 text-right">Totale omzet</th>
+                  <th class="px-3 py-2 text-right">Gem. omzet/order</th>
+                </tr>
+              </thead>
+              <tbody id="deepDiveProductsTable">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold mb-2">Transacties</h3>
+          <div class="overflow-x-auto max-h-64 overflow-y-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead class="sticky top-0 bg-gray-100">
+                <tr class="border-b">
+                  <th class="px-3 py-2 text-left">Datum</th>
+                  <th class="px-3 py-2 text-left">Leverancier</th>
+                  <th class="px-3 py-2 text-left">Product</th>
+                  <th class="px-3 py-2 text-right">Omzet</th>
+                </tr>
+              </thead>
+              <tbody id="deepDiveTransactionsTable">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Scenario vergelijker -->
+  <div class="mt-8 mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 class="font-semibold">Scenario vergelijker</h3>
+        <p class="text-xs text-gray-500">Sla varianten op en vergelijk ze als lijndiagram in dezelfde grafiek.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input id="scenarioNameInput" type="text" placeholder="Naam scenario"
+               class="px-3 py-2 border rounded-md text-sm" />
+        <button id="scenarioSaveBtn"
+                class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+          Scenario opslaan
+        </button>
+      </div>
+    </div>
+    <div id="scenarioList" class="mt-4 space-y-2 text-sm text-gray-700">
+      <p class="text-xs text-gray-500">Nog geen scenario’s opgeslagen.</p>
+    </div>
+  </div>
+
+  <!-- C&I Markering Panel -->
+  <div class="mt-8 mb-6 bg-white p-4 rounded-md shadow-sm card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-sm">Markeer artikelen als C&I</h3>
+      <button id="toggleCiPanel" class="text-xs text-blue-600 hover:text-blue-800">Toon/verberg</button>
+    </div>
+    <div id="ciMarkingPanel" class="hidden">
+      <p class="text-sm text-gray-600 mb-3">Vink artikelen aan die als C&I (Commercial & Industrial) moeten worden behandeld. Onaangevinkt = Residentieel.</p>
+      
+      <!-- Zoekveld -->
+      <div class="mb-3 flex items-center gap-2">
+        <input type="text" id="ciSearchInput" 
+               placeholder="Zoek artikelen..." 
+               class="flex-1 px-3 py-2 border rounded-md text-sm" />
+        <button id="ciSelectAllVisible" class="px-3 py-2 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+          Selecteer zichtbare
+        </button>
+        <button id="ciDeselectAllVisible" class="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+          Deselecteer zichtbare
+        </button>
+      </div>
+      
+      <div id="ciMarkingList" class="grid md:grid-cols-3 gap-2 max-h-64 overflow-y-auto border rounded-md p-3">
+        <!-- Wordt dynamisch gevuld -->
+        <p class="text-sm text-gray-500">Upload eerst een CSV om artikelen te zien</p>
+      </div>
+      <p id="ciSearchResultsCount" class="mt-2 text-xs text-gray-500"></p>
+    </div>
+  </div>
+
+  <!-- Tabs naar tools -->
+  <div class="mt-8 flex gap-3">
+    <a href="combinations.html" class="inline-block px-4 py-2 bg-white border rounded hover:bg-gray-50">Ga naar Artikelcombinaties Analyse</a>
+    <a href="funnel.html" class="inline-block px-4 py-2 bg-white border rounded hover:bg-gray-50">Ga naar Commerciële Acties & Funnel Forecast</a>
+    <a href="product-forecast.html" class="inline-block px-4 py-2 bg-white border rounded hover:bg-gray-50">Ga naar Product Forecast (Periode)</a>
+  </div>
+
+  <hr class="my-6">
+
+  <p><a href="market-compare.html">↗ Batterij-marktvergelijker (MWh)</a></p>
+
+  <!-- Modal: Configuratie opslaan -->
+  <div id="saveConfigModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+      <h2 class="text-xl font-bold mb-4">Configuratie opslaan</h2>
+      <div class="space-y-4">
+        <label class="block">
+          <span class="block mb-1 text-sm font-medium">Naam *</span>
+          <input type="text" id="configNameInput" 
+                 class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
+                 placeholder="Bijv. Q1 2024 Forecast" required>
+        </label>
+        <label class="block">
+          <span class="block mb-1 text-sm font-medium">Beschrijving (optioneel)</span>
+          <textarea id="configDescriptionInput" rows="3"
+                    class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                    placeholder="Bijv. Baseline scenario met 5% groei"></textarea>
+        </label>
+        <div class="flex gap-2 justify-end">
+          <button id="saveConfigCancelBtn" 
+                  class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300">Annuleren</button>
+          <button id="saveConfigConfirmBtn" 
+                  class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">Opslaan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Configuraties laden -->
+  <div id="loadConfigModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <h2 class="text-xl font-bold mb-4">Configuraties laden</h2>
+      <div class="mb-4">
+        <input type="text" id="configSearchInput" 
+               class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
+               placeholder="🔍 Zoek op naam of beschrijving...">
+      </div>
+      <div id="configListContainer" class="flex-1 overflow-y-auto space-y-2 mb-4">
+        <!-- Wordt dynamisch gevuld -->
+      </div>
+      <div class="flex gap-2 justify-end border-t pt-4">
+        <button id="loadConfigFromFileBtn" 
+                class="px-4 py-2 bg-stone-600 text-white rounded hover:bg-stone-700">📁 Van bestand laden</button>
+        <button id="loadConfigCancelBtn" 
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js" type="module"></script>
+  <script>
+    // Dark mode toggle with persistence
+    (function() {
+      const root = document.documentElement;
+      const LS_KEY = 'theme:dark';
+      function applyTheme(isDark) {
+        root.classList.toggle('dark', !!isDark);
+        const btn = document.getElementById('themeToggle');
+        if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+      }
+      const saved = localStorage.getItem(LS_KEY);
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(saved === '1' || (saved === null && prefersDark));
+      window.addEventListener('click', function(e){
+        const t = e.target;
+        if (t && t.id === 'themeToggle') {
+          const isDark = !document.documentElement.classList.contains('dark');
+          applyTheme(isDark);
+          localStorage.setItem(LS_KEY, isDark ? '1' : '0');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
