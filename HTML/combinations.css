@@ -1,0 +1,53 @@
+#combinationResults {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.combination-type-radio:checked + div {
+  border-color: #9333ea;
+  background-color: #faf5ff;
+}
+
+.article-select:focus,
+#mainArticleSelect:focus {
+  border-color: #9333ea;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+
+.remove-article-btn {
+  transition: all 0.2s ease-in-out;
+}
+
+.remove-article-btn:hover {
+  transform: scale(1.05);
+}
+
+#analyzeCombinationsBtn {
+  transition: all 0.3s ease-in-out;
+}
+
+#analyzeCombinationsBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(147, 51, 234, 0.3);
+}
+
+#combinationChart {
+  max-height: 400px;
+}
+
+@media (max-width: 768px) {
+  .grid.md\:grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+  .grid.md\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  .grid.md\:grid-cols-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+

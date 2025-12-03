@@ -1,0 +1,100 @@
+/* OUD — werkt alleen met build-proces
+#customerList label {
+  @apply flex items-center justify-between w-full px-2 py-1 hover:bg-gray-100 rounded;
+}
+*/
+
+/* NIEUW — pure CSS */
+#customerList label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.25rem 0.5rem;     /* py-1 px-2 */
+  border-radius: 0.25rem;      /* rounded */
+  transition: background-color 0.15s;
+}
+
+#customerList label:hover {
+  background-color: #f7fafc;   /* approx. gray-100 */
+}
+/* mini sparkline canvas */
+.sparkline {
+  width: 100%;
+  height: 30px;
+}
+
+/* Artikelcombinaties styling is verplaatst naar combinations.css */
+
+/* Responsive aanpassingen */
+@media (max-width: 768px) {
+  .grid.md\\:grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid.md\\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid.md\\:grid-cols-5 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Compact form controls and cards */
+select, input[type="month"], input[type="number"], input[type="text"] {
+  line-height: 1.25rem;
+}
+
+.shadow-sm {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* Reduce default margins around canvases */
+canvas + p#dateFilterInfo {
+  margin-top: 0.5rem;
+}
+
+/* Card theming and dark mode basics */
+.card {
+  background: #fff;
+}
+
+.dark .card {
+  background: #111827; /* gray-900 */
+  color: #e5e7eb;      /* gray-200 */
+}
+
+.dark body {
+  background-color: #0b1220; /* near slate-950 */
+  color: #e5e7eb;
+}
+
+.dark a { color: #93c5fd; }
+
+/* 4BLUE accent color for focus/interactive states */
+:root {
+  --accent-4blue: #1f75fe; /* brand-like blue */
+}
+
+select:focus,
+input[type="month"]:focus,
+input[type="number"]:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-4blue);
+  box-shadow: 0 0 0 3px rgba(31, 117, 254, 0.12);
+}
+
+.dark select,
+.dark input[type="month"],
+.dark input[type="number"],
+.dark input[type="text"] {
+  background-color: #0f172a; /* slate-900 */
+  border-color: #334155;     /* slate-700 */
+  color: #e5e7eb;
+}
+
+.dark #customerList label:hover {
+  background-color: #0b1220;
+}
